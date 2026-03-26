@@ -50,6 +50,30 @@ type Preset struct {
 	UserID       sql.NullString `json:"user_id"`
 }
 
+type Resource struct {
+	Rowid     int64  `json:"rowid"`
+	ID        string `json:"id"`
+	UserID    string `json:"user_id"`
+	Kind      string `json:"kind"`
+	Title     string `json:"title"`
+	Content   string `json:"content"`
+	Tags      string `json:"tags"`
+	Meta      string `json:"meta"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+type ResourceFt struct {
+	Title   string `json:"title"`
+	Content string `json:"content"`
+	Tags    string `json:"tags"`
+}
+
+type ResourceRelation struct {
+	SrcID    string `json:"src_id"`
+	DstID    string `json:"dst_id"`
+	Relation string `json:"relation"`
+}
+
 type ServerSetting struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`

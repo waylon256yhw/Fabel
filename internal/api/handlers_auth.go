@@ -3,12 +3,14 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"unicode/utf8"
 
 	"fabel/internal/auth"
 	"fabel/internal/dbq"
+	"fabel/internal/resource"
 )
 
 func (s *Server) Register(w http.ResponseWriter, r *http.Request) {
@@ -88,12 +90,36 @@ func (s *Server) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Backfill orphaned seed data to the first user.
+	// Backfill orphaned seed data to the first user and index into resource layer.
 	if role == "admin" {
 		uid := userIDParam(userID)
 		_ = s.q.BackfillCharacters(ctx, uid)
 		_ = s.q.BackfillPresets(ctx, uid)
 		_ = s.q.BackfillConversations(ctx, uid)
+
+		// Index backfilled seed data.
+		if chars, err := s.q.ListCharacters(ctx, uid); err == nil {
+			for _, c := range chars {
+				_ = s.idx.Upsert(ctx, resource.Document{
+					ID:      fmt.Sprintf("character:%d", c.ID),
+					UserID:  userID,
+					Kind:    resource.KindCharacter,
+					Title:   c.Name,
+					Content: c.Description + "\n" + c.Personality + "\n" + c.Scenario,
+				})
+			}
+		}
+		if presets, err := s.q.ListPresets(ctx, uid); err == nil {
+			for _, p := range presets {
+				_ = s.idx.Upsert(ctx, resource.Document{
+					ID:      fmt.Sprintf("preset:%d", p.ID),
+					UserID:  userID,
+					Kind:    resource.KindPreset,
+					Title:   p.Name,
+					Content: p.SystemPrompt,
+				})
+			}
+		}
 	}
 
 	// Auto-login: renew token to prevent session fixation, then set user_id.
