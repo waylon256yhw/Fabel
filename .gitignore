@@ -1,0 +1,21 @@
+# Runtime
+fabel.db
+fabel.db-wal
+fabel.db-shm
+data/
+
+# Build
+bin/
+web/node_modules/
+web/dist/
+!web/dist/placeholder.txt
+
+# Local docs & references
+dev-docs/
+aesthetics/
+references/
+
+# Tool configs (local only)
+.claude/
+.serena/
+CLAUDE.md

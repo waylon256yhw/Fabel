@@ -1,0 +1,139 @@
+openapi: "3.0.3"
+info:
+  title: Fabel API
+  version: 0.0.1
+
+paths:
+  /api/bootstrap:
+    get:
+      operationId: getBootstrap
+      summary: Initial data load
+      responses:
+        "200":
+          description: Characters, presets, and optional seeded conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BootstrapResponse"
+
+  /api/conversations/{id}:
+    get:
+      operationId: getConversation
+      summary: Get conversation with details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversation with character, preset, and messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetConversationResponse"
+        "404":
+          description: Conversation not found
+
+components:
+  schemas:
+    Character:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        personality:
+          type: string
+        scenario:
+          type: string
+        first_mes:
+          type: string
+        mes_example:
+          type: string
+
+    Preset:
+      type: object
+      required: [id, name, model]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        model:
+          type: string
+        temperature:
+          type: number
+          format: double
+        max_tokens:
+          type: integer
+        system_prompt:
+          type: string
+
+    Message:
+      type: object
+      required: [id, role, content]
+      properties:
+        id:
+          type: integer
+        conversation_id:
+          type: integer
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+        parent_id:
+          type: integer
+          nullable: true
+        active_child_id:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+
+    ConversationDetail:
+      type: object
+      required: [id, character, preset, messages]
+      properties:
+        id:
+          type: integer
+        character_id:
+          type: integer
+        preset_id:
+          type: integer
+        created_at:
+          type: string
+        character:
+          $ref: "#/components/schemas/Character"
+        preset:
+          $ref: "#/components/schemas/Preset"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+
+    BootstrapResponse:
+      type: object
+      properties:
+        characters:
+          type: array
+          items:
+            $ref: "#/components/schemas/Character"
+        presets:
+          type: array
+          items:
+            $ref: "#/components/schemas/Preset"
+        seeded_conversation:
+          $ref: "#/components/schemas/ConversationDetail"
+
+    GetConversationResponse:
+      type: object
+      properties:
+        conversation:
+          $ref: "#/components/schemas/ConversationDetail"
