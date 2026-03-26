@@ -6,18 +6,20 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"fabel/internal/auth"
 	"fabel/internal/dbq"
 )
 
 func (s *Server) GetBootstrap(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	uid := userIDParam(auth.UserFromContext(ctx).ID)
 
-	chars, err := s.q.ListCharacters(ctx)
+	chars, err := s.q.ListCharacters(ctx, uid)
 	if err != nil {
 		httpErr(w, err, 500)
 		return
 	}
-	presets, err := s.q.ListPresets(ctx)
+	presets, err := s.q.ListPresets(ctx, uid)
 	if err != nil {
 		httpErr(w, err, 500)
 		return
@@ -38,9 +40,9 @@ func (s *Server) GetBootstrap(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Load first conversation if exists.
-	firstID, err := s.q.GetFirstConversationID(ctx)
+	firstID, err := s.q.GetFirstConversationID(ctx, uid)
 	if err == nil {
-		detail, err := s.getConversationDetail(ctx, firstID)
+		detail, err := s.getConversationDetail(ctx, firstID, uid)
 		if err == nil {
 			resp.SeededConversation = detail
 		}
@@ -51,6 +53,7 @@ func (s *Server) GetBootstrap(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) CreateConversation(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	uid := userIDParam(auth.UserFromContext(ctx).ID)
 
 	var req CreateConversationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -70,6 +73,7 @@ func (s *Server) CreateConversation(w http.ResponseWriter, r *http.Request) {
 	convID, err := qtx.CreateConversation(ctx, dbq.CreateConversationParams{
 		CharacterID: int64(req.CharacterId),
 		PresetID:    int64(req.PresetId),
+		UserID:      uid,
 	})
 	if err != nil {
 		httpErr(w, err, 500)
@@ -77,7 +81,10 @@ func (s *Server) CreateConversation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Append greeting message.
-	char, err := qtx.GetCharacter(ctx, int64(req.CharacterId))
+	char, err := qtx.GetCharacter(ctx, dbq.GetCharacterParams{
+		ID:     int64(req.CharacterId),
+		UserID: uid,
+	})
 	if err != nil {
 		httpErr(w, err, 500)
 		return
@@ -96,7 +103,7 @@ func (s *Server) CreateConversation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	detail, err := s.getConversationDetail(ctx, convID)
+	detail, err := s.getConversationDetail(ctx, convID, uid)
 	if err != nil {
 		httpErr(w, err, 500)
 		return
@@ -106,7 +113,10 @@ func (s *Server) CreateConversation(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) GetConversation(w http.ResponseWriter, r *http.Request, id int) {
-	detail, err := s.getConversationDetail(r.Context(), int64(id))
+	ctx := r.Context()
+	uid := userIDParam(auth.UserFromContext(ctx).ID)
+
+	detail, err := s.getConversationDetail(ctx, int64(id), uid)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			httpErr(w, err, 404)
@@ -119,7 +129,10 @@ func (s *Server) GetConversation(w http.ResponseWriter, r *http.Request, id int)
 }
 
 func (s *Server) GetConversationPrompt(w http.ResponseWriter, r *http.Request, id int) {
-	detail, err := s.getConversationDetail(r.Context(), int64(id))
+	ctx := r.Context()
+	uid := userIDParam(auth.UserFromContext(ctx).ID)
+
+	detail, err := s.getConversationDetail(ctx, int64(id), uid)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			httpErr(w, err, 404)
@@ -137,16 +150,16 @@ func (s *Server) GetConversationPrompt(w http.ResponseWriter, r *http.Request, i
 	writeJSON(w, 200, PromptResponse{Messages: out})
 }
 
-func (s *Server) getConversationDetail(ctx context.Context, id int64) (*ConversationDetail, error) {
-	conv, err := s.q.GetConversation(ctx, id)
+func (s *Server) getConversationDetail(ctx context.Context, id int64, uid sql.NullString) (*ConversationDetail, error) {
+	conv, err := s.q.GetConversation(ctx, dbq.GetConversationParams{ID: id, UserID: uid})
 	if err != nil {
 		return nil, err
 	}
-	char, err := s.q.GetCharacter(ctx, conv.CharacterID)
+	char, err := s.q.GetCharacter(ctx, dbq.GetCharacterParams{ID: conv.CharacterID, UserID: uid})
 	if err != nil {
 		return nil, err
 	}
-	preset, err := s.q.GetPreset(ctx, conv.PresetID)
+	preset, err := s.q.GetPreset(ctx, dbq.GetPresetParams{ID: conv.PresetID, UserID: uid})
 	if err != nil {
 		return nil, err
 	}

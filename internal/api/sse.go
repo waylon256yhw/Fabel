@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"fabel/internal/auth"
 	"fabel/internal/dbq"
 )
 
@@ -40,8 +41,10 @@ func (s *Server) HandleSendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uid := userIDParam(auth.UserFromContext(ctx).ID)
+
 	// Get conversation state BEFORE appending user message.
-	detail, err := s.getConversationDetail(ctx, id)
+	detail, err := s.getConversationDetail(ctx, id, uid)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			httpErr(w, err, 404)

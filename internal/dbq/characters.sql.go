@@ -7,13 +7,28 @@ package dbq
 
 import (
 	"context"
+	"database/sql"
 )
+
+const backfillCharacters = `-- name: BackfillCharacters :exec
+UPDATE characters SET user_id = ? WHERE user_id IS NULL
+`
+
+func (q *Queries) BackfillCharacters(ctx context.Context, userID sql.NullString) error {
+	_, err := q.db.ExecContext(ctx, backfillCharacters, userID)
+	return err
+}
 
 const getCharacter = `-- name: GetCharacter :one
 SELECT id, name, description, personality, scenario, first_mes, mes_example
 FROM characters
-WHERE id = ?
+WHERE id = ? AND user_id = ?
 `
+
+type GetCharacterParams struct {
+	ID     int64          `json:"id"`
+	UserID sql.NullString `json:"user_id"`
+}
 
 type GetCharacterRow struct {
 	ID          int64  `json:"id"`
@@ -25,8 +40,8 @@ type GetCharacterRow struct {
 	MesExample  string `json:"mes_example"`
 }
 
-func (q *Queries) GetCharacter(ctx context.Context, id int64) (GetCharacterRow, error) {
-	row := q.db.QueryRowContext(ctx, getCharacter, id)
+func (q *Queries) GetCharacter(ctx context.Context, arg GetCharacterParams) (GetCharacterRow, error) {
+	row := q.db.QueryRowContext(ctx, getCharacter, arg.ID, arg.UserID)
 	var i GetCharacterRow
 	err := row.Scan(
 		&i.ID,
@@ -43,6 +58,7 @@ func (q *Queries) GetCharacter(ctx context.Context, id int64) (GetCharacterRow, 
 const listCharacters = `-- name: ListCharacters :many
 SELECT id, name, description, personality, scenario, first_mes, mes_example
 FROM characters
+WHERE user_id = ?
 ORDER BY id
 `
 
@@ -56,8 +72,8 @@ type ListCharactersRow struct {
 	MesExample  string `json:"mes_example"`
 }
 
-func (q *Queries) ListCharacters(ctx context.Context) ([]ListCharactersRow, error) {
-	rows, err := q.db.QueryContext(ctx, listCharacters)
+func (q *Queries) ListCharacters(ctx context.Context, userID sql.NullString) ([]ListCharactersRow, error) {
+	rows, err := q.db.QueryContext(ctx, listCharacters, userID)
 	if err != nil {
 		return nil, err
 	}

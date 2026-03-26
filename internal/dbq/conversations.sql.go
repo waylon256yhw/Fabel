@@ -7,20 +7,31 @@ package dbq
 
 import (
 	"context"
+	"database/sql"
 )
 
+const backfillConversations = `-- name: BackfillConversations :exec
+UPDATE conversations SET user_id = ? WHERE user_id IS NULL
+`
+
+func (q *Queries) BackfillConversations(ctx context.Context, userID sql.NullString) error {
+	_, err := q.db.ExecContext(ctx, backfillConversations, userID)
+	return err
+}
+
 const createConversation = `-- name: CreateConversation :execlastid
-INSERT INTO conversations (character_id, preset_id)
-VALUES (?, ?)
+INSERT INTO conversations (character_id, preset_id, user_id)
+VALUES (?, ?, ?)
 `
 
 type CreateConversationParams struct {
-	CharacterID int64 `json:"character_id"`
-	PresetID    int64 `json:"preset_id"`
+	CharacterID int64          `json:"character_id"`
+	PresetID    int64          `json:"preset_id"`
+	UserID      sql.NullString `json:"user_id"`
 }
 
 func (q *Queries) CreateConversation(ctx context.Context, arg CreateConversationParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, createConversation, arg.CharacterID, arg.PresetID)
+	result, err := q.db.ExecContext(ctx, createConversation, arg.CharacterID, arg.PresetID, arg.UserID)
 	if err != nil {
 		return 0, err
 	}
@@ -30,12 +41,24 @@ func (q *Queries) CreateConversation(ctx context.Context, arg CreateConversation
 const getConversation = `-- name: GetConversation :one
 SELECT id, character_id, preset_id, created_at
 FROM conversations
-WHERE id = ?
+WHERE id = ? AND user_id = ?
 `
 
-func (q *Queries) GetConversation(ctx context.Context, id int64) (Conversation, error) {
-	row := q.db.QueryRowContext(ctx, getConversation, id)
-	var i Conversation
+type GetConversationParams struct {
+	ID     int64          `json:"id"`
+	UserID sql.NullString `json:"user_id"`
+}
+
+type GetConversationRow struct {
+	ID          int64        `json:"id"`
+	CharacterID int64        `json:"character_id"`
+	PresetID    int64        `json:"preset_id"`
+	CreatedAt   sql.NullTime `json:"created_at"`
+}
+
+func (q *Queries) GetConversation(ctx context.Context, arg GetConversationParams) (GetConversationRow, error) {
+	row := q.db.QueryRowContext(ctx, getConversation, arg.ID, arg.UserID)
+	var i GetConversationRow
 	err := row.Scan(
 		&i.ID,
 		&i.CharacterID,
@@ -46,11 +69,11 @@ func (q *Queries) GetConversation(ctx context.Context, id int64) (Conversation, 
 }
 
 const getFirstConversationID = `-- name: GetFirstConversationID :one
-SELECT id FROM conversations ORDER BY id LIMIT 1
+SELECT id FROM conversations WHERE user_id = ? ORDER BY id LIMIT 1
 `
 
-func (q *Queries) GetFirstConversationID(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, getFirstConversationID)
+func (q *Queries) GetFirstConversationID(ctx context.Context, userID sql.NullString) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getFirstConversationID, userID)
 	var id int64
 	err := row.Scan(&id)
 	return id, err

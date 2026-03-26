@@ -20,19 +20,55 @@ import (
 
 // Defines values for MessageRole.
 const (
-	Assistant MessageRole = "assistant"
-	System    MessageRole = "system"
-	User      MessageRole = "user"
+	MessageRoleAssistant MessageRole = "assistant"
+	MessageRoleSystem    MessageRole = "system"
+	MessageRoleUser      MessageRole = "user"
 )
 
 // Valid indicates whether the value is a known member of the MessageRole enum.
 func (e MessageRole) Valid() bool {
 	switch e {
-	case Assistant:
+	case MessageRoleAssistant:
 		return true
-	case System:
+	case MessageRoleSystem:
 		return true
-	case User:
+	case MessageRoleUser:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateUserRequestRole.
+const (
+	UpdateUserRequestRoleAdmin UpdateUserRequestRole = "admin"
+	UpdateUserRequestRoleUser  UpdateUserRequestRole = "user"
+)
+
+// Valid indicates whether the value is a known member of the UpdateUserRequestRole enum.
+func (e UpdateUserRequestRole) Valid() bool {
+	switch e {
+	case UpdateUserRequestRoleAdmin:
+		return true
+	case UpdateUserRequestRoleUser:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UserRole.
+const (
+	UserRoleAdmin UserRole = "admin"
+	UserRoleUser  UserRole = "user"
+)
+
+// Valid indicates whether the value is a known member of the UserRole enum.
+func (e UserRole) Valid() bool {
+	switch e {
+	case UserRoleAdmin:
+		return true
+	case UserRoleUser:
 		return true
 	default:
 		return false
@@ -79,6 +115,12 @@ type GetConversationResponse struct {
 	Conversation ConversationDetail `json:"conversation"`
 }
 
+// LoginRequest defines model for LoginRequest.
+type LoginRequest struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
 // Message defines model for Message.
 type Message struct {
 	ActiveChildId  *int        `json:"active_child_id,omitempty"`
@@ -114,11 +156,84 @@ type PromptResponse struct {
 	Messages []PromptMessage `json:"messages"`
 }
 
+// RegisterRequest defines model for RegisterRequest.
+type RegisterRequest struct {
+	DisplayName *string `json:"display_name,omitempty"`
+	Password    string  `json:"password"`
+	Username    string  `json:"username"`
+}
+
+// ServerSettings defines model for ServerSettings.
+type ServerSettings struct {
+	AllowRegistration *bool `json:"allow_registration,omitempty"`
+}
+
+// UpdateUserRequest defines model for UpdateUserRequest.
+type UpdateUserRequest struct {
+	Role *UpdateUserRequestRole `json:"role,omitempty"`
+}
+
+// UpdateUserRequestRole defines model for UpdateUserRequest.Role.
+type UpdateUserRequestRole string
+
+// User defines model for User.
+type User struct {
+	CreatedAt   string   `json:"created_at"`
+	DisplayName string   `json:"display_name"`
+	Id          string   `json:"id"`
+	Role        UserRole `json:"role"`
+	Username    string   `json:"username"`
+}
+
+// UserRole defines model for User.Role.
+type UserRole string
+
+// UserList defines model for UserList.
+type UserList struct {
+	Users []User `json:"users"`
+}
+
+// UpdateSettingsJSONRequestBody defines body for UpdateSettings for application/json ContentType.
+type UpdateSettingsJSONRequestBody = ServerSettings
+
+// UpdateUserJSONRequestBody defines body for UpdateUser for application/json ContentType.
+type UpdateUserJSONRequestBody = UpdateUserRequest
+
+// LoginJSONRequestBody defines body for Login for application/json ContentType.
+type LoginJSONRequestBody = LoginRequest
+
+// RegisterJSONRequestBody defines body for Register for application/json ContentType.
+type RegisterJSONRequestBody = RegisterRequest
+
 // CreateConversationJSONRequestBody defines body for CreateConversation for application/json ContentType.
 type CreateConversationJSONRequestBody = CreateConversationRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Get server settings (admin only)
+	// (GET /api/admin/settings)
+	GetSettings(w http.ResponseWriter, r *http.Request)
+	// Update server settings (admin only)
+	// (PATCH /api/admin/settings)
+	UpdateSettings(w http.ResponseWriter, r *http.Request)
+	// List all users (admin only)
+	// (GET /api/admin/users)
+	ListUsers(w http.ResponseWriter, r *http.Request)
+	// Update a user (admin only)
+	// (PATCH /api/admin/users/{id})
+	UpdateUser(w http.ResponseWriter, r *http.Request, id string)
+	// Log in
+	// (POST /api/auth/login)
+	Login(w http.ResponseWriter, r *http.Request)
+	// Log out (destroy session)
+	// (POST /api/auth/logout)
+	Logout(w http.ResponseWriter, r *http.Request)
+	// Get current user
+	// (GET /api/auth/me)
+	GetMe(w http.ResponseWriter, r *http.Request)
+	// Register a new user
+	// (POST /api/auth/register)
+	Register(w http.ResponseWriter, r *http.Request)
 	// Initial data load
 	// (GET /api/bootstrap)
 	GetBootstrap(w http.ResponseWriter, r *http.Request)
@@ -136,6 +251,54 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// Get server settings (admin only)
+// (GET /api/admin/settings)
+func (_ Unimplemented) GetSettings(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Update server settings (admin only)
+// (PATCH /api/admin/settings)
+func (_ Unimplemented) UpdateSettings(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// List all users (admin only)
+// (GET /api/admin/users)
+func (_ Unimplemented) ListUsers(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Update a user (admin only)
+// (PATCH /api/admin/users/{id})
+func (_ Unimplemented) UpdateUser(w http.ResponseWriter, r *http.Request, id string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Log in
+// (POST /api/auth/login)
+func (_ Unimplemented) Login(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Log out (destroy session)
+// (POST /api/auth/logout)
+func (_ Unimplemented) Logout(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get current user
+// (GET /api/auth/me)
+func (_ Unimplemented) GetMe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Register a new user
+// (POST /api/auth/register)
+func (_ Unimplemented) Register(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // Initial data load
 // (GET /api/bootstrap)
@@ -169,6 +332,129 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// GetSettings operation middleware
+func (siw *ServerInterfaceWrapper) GetSettings(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetSettings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateSettings operation middleware
+func (siw *ServerInterfaceWrapper) UpdateSettings(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateSettings(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListUsers operation middleware
+func (siw *ServerInterfaceWrapper) ListUsers(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListUsers(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateUser operation middleware
+func (siw *ServerInterfaceWrapper) UpdateUser(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateUser(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// Login operation middleware
+func (siw *ServerInterfaceWrapper) Login(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Login(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// Logout operation middleware
+func (siw *ServerInterfaceWrapper) Logout(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Logout(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetMe operation middleware
+func (siw *ServerInterfaceWrapper) GetMe(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// Register operation middleware
+func (siw *ServerInterfaceWrapper) Register(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Register(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetBootstrap operation middleware
 func (siw *ServerInterfaceWrapper) GetBootstrap(w http.ResponseWriter, r *http.Request) {
@@ -362,6 +648,30 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/admin/settings", wrapper.GetSettings)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/admin/settings", wrapper.UpdateSettings)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/admin/users", wrapper.ListUsers)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/api/admin/users/{id}", wrapper.UpdateUser)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/auth/login", wrapper.Login)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/auth/logout", wrapper.Logout)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/auth/me", wrapper.GetMe)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/auth/register", wrapper.Register)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/bootstrap", wrapper.GetBootstrap)
 	})
 	r.Group(func(r chi.Router) {
@@ -380,22 +690,32 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

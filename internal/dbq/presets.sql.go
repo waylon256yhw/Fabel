@@ -7,13 +7,28 @@ package dbq
 
 import (
 	"context"
+	"database/sql"
 )
+
+const backfillPresets = `-- name: BackfillPresets :exec
+UPDATE presets SET user_id = ? WHERE user_id IS NULL
+`
+
+func (q *Queries) BackfillPresets(ctx context.Context, userID sql.NullString) error {
+	_, err := q.db.ExecContext(ctx, backfillPresets, userID)
+	return err
+}
 
 const getPreset = `-- name: GetPreset :one
 SELECT id, name, model, temperature, max_tokens, system_prompt
 FROM presets
-WHERE id = ?
+WHERE id = ? AND user_id = ?
 `
+
+type GetPresetParams struct {
+	ID     int64          `json:"id"`
+	UserID sql.NullString `json:"user_id"`
+}
 
 type GetPresetRow struct {
 	ID           int64   `json:"id"`
@@ -24,8 +39,8 @@ type GetPresetRow struct {
 	SystemPrompt string  `json:"system_prompt"`
 }
 
-func (q *Queries) GetPreset(ctx context.Context, id int64) (GetPresetRow, error) {
-	row := q.db.QueryRowContext(ctx, getPreset, id)
+func (q *Queries) GetPreset(ctx context.Context, arg GetPresetParams) (GetPresetRow, error) {
+	row := q.db.QueryRowContext(ctx, getPreset, arg.ID, arg.UserID)
 	var i GetPresetRow
 	err := row.Scan(
 		&i.ID,
@@ -41,6 +56,7 @@ func (q *Queries) GetPreset(ctx context.Context, id int64) (GetPresetRow, error)
 const listPresets = `-- name: ListPresets :many
 SELECT id, name, model, temperature, max_tokens, system_prompt
 FROM presets
+WHERE user_id = ?
 ORDER BY id
 `
 
@@ -53,8 +69,8 @@ type ListPresetsRow struct {
 	SystemPrompt string  `json:"system_prompt"`
 }
 
-func (q *Queries) ListPresets(ctx context.Context) ([]ListPresetsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listPresets)
+func (q *Queries) ListPresets(ctx context.Context, userID sql.NullString) ([]ListPresetsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPresets, userID)
 	if err != nil {
 		return nil, err
 	}

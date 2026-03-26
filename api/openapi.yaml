@@ -7,6 +7,152 @@ info:
     It is registered manually on the chi router.
 
 paths:
+  # ── Auth ──────────────────────────────────────────────
+  /api/auth/register:
+    post:
+      operationId: register
+      summary: Register a new user
+      description: |
+        First registered user becomes admin. Subsequent registrations
+        require allow_registration=true in server settings.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User created and logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Validation error
+        "403":
+          description: Registration is disabled
+
+  /api/auth/login:
+    post:
+      operationId: login
+      summary: Log in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Invalid credentials
+
+  /api/auth/logout:
+    post:
+      operationId: logout
+      summary: Log out (destroy session)
+      responses:
+        "204":
+          description: Logged out
+
+  /api/auth/me:
+    get:
+      operationId: getMe
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+
+  # ── Admin ─────────────────────────────────────────────
+  /api/admin/users:
+    get:
+      operationId: listUsers
+      summary: List all users (admin only)
+      responses:
+        "200":
+          description: All users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserList"
+        "403":
+          description: Not admin
+
+  /api/admin/users/{id}:
+    patch:
+      operationId: updateUser
+      summary: Update a user (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Validation error
+        "403":
+          description: Not admin
+        "404":
+          description: User not found
+
+  /api/admin/settings:
+    get:
+      operationId: getSettings
+      summary: Get server settings (admin only)
+      responses:
+        "200":
+          description: Server settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerSettings"
+        "403":
+          description: Not admin
+    patch:
+      operationId: updateSettings
+      summary: Update server settings (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServerSettings"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerSettings"
+        "403":
+          description: Not admin
+
+  # ── App ───────────────────────────────────────────────
   /api/bootstrap:
     get:
       operationId: getBootstrap
@@ -79,6 +225,70 @@ paths:
 
 components:
   schemas:
+    # ── Auth schemas ──────────────────────────────────────
+    RegisterRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 2
+          maxLength: 32
+        password:
+          type: string
+          minLength: 8
+        display_name:
+          type: string
+          maxLength: 64
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    User:
+      type: object
+      required: [id, username, display_name, role, created_at]
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        display_name:
+          type: string
+        role:
+          type: string
+          enum: [admin, user]
+        created_at:
+          type: string
+
+    UserList:
+      type: object
+      required: [users]
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [admin, user]
+
+    ServerSettings:
+      type: object
+      properties:
+        allow_registration:
+          type: boolean
+
+    # ── App schemas ───────────────────────────────────────
     Character:
       type: object
       required: [id, name, description, personality, scenario, first_mes, mes_example]

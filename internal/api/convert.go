@@ -86,3 +86,18 @@ func dbMessagesToAPI(msgs []dbq.Message) []Message {
 	}
 	return out
 }
+
+func dbUserToAPI(u dbq.User) User {
+	return User{
+		Id:          u.ID,
+		Username:    u.Username,
+		DisplayName: u.DisplayName,
+		Role:        UserRole(u.Role),
+		CreatedAt:   u.CreatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+}
+
+// userIDParam converts a user ID string to sql.NullString for use in queries.
+func userIDParam(id string) sql.NullString {
+	return sql.NullString{String: id, Valid: true}
+}

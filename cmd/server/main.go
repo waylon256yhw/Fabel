@@ -7,13 +7,17 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
 
 	fabeldb "fabel/db"
 	"fabel/internal/api"
+	"fabel/internal/auth"
+	"fabel/internal/dbq"
 	"fabel/llm"
 	"fabel/web"
 )
@@ -46,19 +50,63 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Session manager.
+	store := auth.NewSQLiteStore(sqlDB)
+	store.StartCleanup(30 * time.Minute)
+
+	sm := scs.New()
+	sm.Store = store
+	sm.Lifetime = 7 * 24 * time.Hour
+	sm.Cookie.HttpOnly = true
+	sm.Cookie.SameSite = http.SameSiteLaxMode
+
 	// Create server.
 	llmClient := llm.New(os.Getenv("OPENAI_API_KEY"), os.Getenv("OPENAI_BASE_URL"))
-	srv := api.NewServer(sqlDB, llmClient)
+	srv := api.NewServer(sqlDB, llmClient, sm)
+
+	// Wrapper for OpenAPI parameter extraction.
+	wrapper := api.ServerInterfaceWrapper{
+		Handler: srv,
+		ErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		},
+	}
+
+	q := dbq.New(sqlDB)
+	requireAuth := auth.RequireAuth(sm, q)
 
 	// Build router.
 	r := chi.NewRouter()
-	r.Use(cors)
+	r.Use(sm.LoadAndSave)
 
-	// SSE endpoint registered manually (not in OpenAPI spec).
-	r.Post("/api/conversations/{id}/send", srv.HandleSendMessage)
+	// Public auth routes.
+	r.Post("/api/auth/register", wrapper.Register)
+	r.Post("/api/auth/login", wrapper.Login)
 
-	// Generated routes from OpenAPI spec.
-	api.HandlerFromMux(srv, r)
+	// Authenticated routes.
+	r.Group(func(r chi.Router) {
+		r.Use(requireAuth)
+
+		r.Post("/api/auth/logout", wrapper.Logout)
+		r.Get("/api/auth/me", wrapper.GetMe)
+
+		r.Get("/api/bootstrap", wrapper.GetBootstrap)
+		r.Post("/api/conversations", wrapper.CreateConversation)
+		r.Get("/api/conversations/{id}", wrapper.GetConversation)
+		r.Get("/api/conversations/{id}/prompt", wrapper.GetConversationPrompt)
+		r.Post("/api/conversations/{id}/send", srv.HandleSendMessage)
+	})
+
+	// Admin routes.
+	r.Group(func(r chi.Router) {
+		r.Use(requireAuth)
+		r.Use(auth.RequireAdmin)
+
+		r.Get("/api/admin/users", wrapper.ListUsers)
+		r.Patch("/api/admin/users/{id}", wrapper.UpdateUser)
+		r.Get("/api/admin/settings", wrapper.GetSettings)
+		r.Patch("/api/admin/settings", wrapper.UpdateSettings)
+	})
 
 	// SPA static file serving.
 	sub, _ := fs.Sub(web.Dist, "dist")
@@ -83,16 +131,4 @@ func main() {
 	}
 	log.Printf("listening on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, r))
-}
-
-func cors(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
 }

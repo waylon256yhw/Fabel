@@ -6,24 +6,27 @@ package dbq
 
 import (
 	"database/sql"
+	"time"
 )
 
 type Character struct {
-	ID          int64        `json:"id"`
-	Name        string       `json:"name"`
-	Description string       `json:"description"`
-	Personality string       `json:"personality"`
-	Scenario    string       `json:"scenario"`
-	FirstMes    string       `json:"first_mes"`
-	MesExample  string       `json:"mes_example"`
-	CreatedAt   sql.NullTime `json:"created_at"`
+	ID          int64          `json:"id"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Personality string         `json:"personality"`
+	Scenario    string         `json:"scenario"`
+	FirstMes    string         `json:"first_mes"`
+	MesExample  string         `json:"mes_example"`
+	CreatedAt   sql.NullTime   `json:"created_at"`
+	UserID      sql.NullString `json:"user_id"`
 }
 
 type Conversation struct {
-	ID          int64        `json:"id"`
-	CharacterID int64        `json:"character_id"`
-	PresetID    int64        `json:"preset_id"`
-	CreatedAt   sql.NullTime `json:"created_at"`
+	ID          int64          `json:"id"`
+	CharacterID int64          `json:"character_id"`
+	PresetID    int64          `json:"preset_id"`
+	CreatedAt   sql.NullTime   `json:"created_at"`
+	UserID      sql.NullString `json:"user_id"`
 }
 
 type Message struct {
@@ -37,11 +40,32 @@ type Message struct {
 }
 
 type Preset struct {
-	ID           int64        `json:"id"`
-	Name         string       `json:"name"`
-	Model        string       `json:"model"`
-	Temperature  float64      `json:"temperature"`
-	MaxTokens    int64        `json:"max_tokens"`
-	SystemPrompt string       `json:"system_prompt"`
-	CreatedAt    sql.NullTime `json:"created_at"`
+	ID           int64          `json:"id"`
+	Name         string         `json:"name"`
+	Model        string         `json:"model"`
+	Temperature  float64        `json:"temperature"`
+	MaxTokens    int64          `json:"max_tokens"`
+	SystemPrompt string         `json:"system_prompt"`
+	CreatedAt    sql.NullTime   `json:"created_at"`
+	UserID       sql.NullString `json:"user_id"`
+}
+
+type ServerSetting struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type Session struct {
+	Token  string  `json:"token"`
+	Data   []byte  `json:"data"`
+	Expiry float64 `json:"expiry"`
+}
+
+type User struct {
+	ID           string    `json:"id"`
+	Username     string    `json:"username"`
+	DisplayName  string    `json:"display_name"`
+	PasswordHash string    `json:"password_hash"`
+	Role         string    `json:"role"`
+	CreatedAt    time.Time `json:"created_at"`
 }
