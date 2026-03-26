@@ -9,6 +9,35 @@ import (
 	"context"
 )
 
+const getPreset = `-- name: GetPreset :one
+SELECT id, name, model, temperature, max_tokens, system_prompt
+FROM presets
+WHERE id = ?
+`
+
+type GetPresetRow struct {
+	ID           int64   `json:"id"`
+	Name         string  `json:"name"`
+	Model        string  `json:"model"`
+	Temperature  float64 `json:"temperature"`
+	MaxTokens    int64   `json:"max_tokens"`
+	SystemPrompt string  `json:"system_prompt"`
+}
+
+func (q *Queries) GetPreset(ctx context.Context, id int64) (GetPresetRow, error) {
+	row := q.db.QueryRowContext(ctx, getPreset, id)
+	var i GetPresetRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Model,
+		&i.Temperature,
+		&i.MaxTokens,
+		&i.SystemPrompt,
+	)
+	return i, err
+}
+
 const listPresets = `-- name: ListPresets :many
 SELECT id, name, model, temperature, max_tokens, system_prompt
 FROM presets

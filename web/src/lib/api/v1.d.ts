@@ -21,6 +21,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/conversations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Create a new conversation */
+    post: operations["createConversation"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/conversations/{id}": {
     parameters: {
       query?: never;
@@ -38,6 +55,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/conversations/{id}/prompt": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get constructed prompt for a conversation */
+    get: operations["getConversationPrompt"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -45,47 +79,58 @@ export interface components {
     Character: {
       id: number;
       name: string;
-      description?: string;
-      personality?: string;
-      scenario?: string;
-      first_mes?: string;
-      mes_example?: string;
+      description: string;
+      personality: string;
+      scenario: string;
+      first_mes: string;
+      mes_example: string;
     };
     Preset: {
       id: number;
       name: string;
       model: string;
       /** Format: double */
-      temperature?: number;
-      max_tokens?: number;
-      system_prompt?: string;
+      temperature: number;
+      max_tokens: number;
+      system_prompt: string;
     };
     Message: {
       id: number;
-      conversation_id?: number;
+      conversation_id: number;
       /** @enum {string} */
       role: "user" | "assistant" | "system";
       content: string;
       parent_id?: number | null;
       active_child_id?: number | null;
-      created_at?: string;
+      created_at: string;
     };
     ConversationDetail: {
       id: number;
-      character_id?: number;
-      preset_id?: number;
-      created_at?: string;
+      character_id: number;
+      preset_id: number;
+      created_at: string;
       character: components["schemas"]["Character"];
       preset: components["schemas"]["Preset"];
       messages: components["schemas"]["Message"][];
     };
+    CreateConversationRequest: {
+      character_id: number;
+      preset_id: number;
+    };
     BootstrapResponse: {
-      characters?: components["schemas"]["Character"][];
-      presets?: components["schemas"]["Preset"][];
+      characters: components["schemas"]["Character"][];
+      presets: components["schemas"]["Preset"][];
       seeded_conversation?: components["schemas"]["ConversationDetail"];
     };
     GetConversationResponse: {
-      conversation?: components["schemas"]["ConversationDetail"];
+      conversation: components["schemas"]["ConversationDetail"];
+    };
+    PromptMessage: {
+      role: string;
+      content: string;
+    };
+    PromptResponse: {
+      messages: components["schemas"]["PromptMessage"][];
     };
   };
   responses: never;
@@ -116,6 +161,30 @@ export interface operations {
       };
     };
   };
+  createConversation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateConversationRequest"];
+      };
+    };
+    responses: {
+      /** @description Created conversation with details */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["GetConversationResponse"];
+        };
+      };
+    };
+  };
   getConversation: {
     parameters: {
       query?: never;
@@ -134,6 +203,35 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["GetConversationResponse"];
+        };
+      };
+      /** @description Conversation not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getConversationPrompt: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Constructed prompt messages */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PromptResponse"];
         };
       };
       /** @description Conversation not found */

@@ -2,6 +2,9 @@ openapi: "3.0.3"
 info:
   title: Fabel API
   version: 0.0.1
+  description: |
+    SSE endpoint POST /api/conversations/{id}/send is not modeled here.
+    It is registered manually on the chi router.
 
 paths:
   /api/bootstrap:
@@ -15,6 +18,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BootstrapResponse"
+
+  /api/conversations:
+    post:
+      operationId: createConversation
+      summary: Create a new conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateConversationRequest"
+      responses:
+        "201":
+          description: Created conversation with details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetConversationResponse"
 
   /api/conversations/{id}:
     get:
@@ -36,11 +57,31 @@ paths:
         "404":
           description: Conversation not found
 
+  /api/conversations/{id}/prompt:
+    get:
+      operationId: getConversationPrompt
+      summary: Get constructed prompt for a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Constructed prompt messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptResponse"
+        "404":
+          description: Conversation not found
+
 components:
   schemas:
     Character:
       type: object
-      required: [id, name]
+      required: [id, name, description, personality, scenario, first_mes, mes_example]
       properties:
         id:
           type: integer
@@ -59,7 +100,7 @@ components:
 
     Preset:
       type: object
-      required: [id, name, model]
+      required: [id, name, model, temperature, max_tokens, system_prompt]
       properties:
         id:
           type: integer
@@ -77,7 +118,7 @@ components:
 
     Message:
       type: object
-      required: [id, role, content]
+      required: [id, conversation_id, role, content, created_at]
       properties:
         id:
           type: integer
@@ -99,7 +140,7 @@ components:
 
     ConversationDetail:
       type: object
-      required: [id, character, preset, messages]
+      required: [id, character_id, preset_id, created_at, character, preset, messages]
       properties:
         id:
           type: integer
@@ -118,8 +159,18 @@ components:
           items:
             $ref: "#/components/schemas/Message"
 
+    CreateConversationRequest:
+      type: object
+      required: [character_id, preset_id]
+      properties:
+        character_id:
+          type: integer
+        preset_id:
+          type: integer
+
     BootstrapResponse:
       type: object
+      required: [characters, presets]
       properties:
         characters:
           type: array
@@ -134,6 +185,25 @@ components:
 
     GetConversationResponse:
       type: object
+      required: [conversation]
       properties:
         conversation:
           $ref: "#/components/schemas/ConversationDetail"
+
+    PromptMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+        content:
+          type: string
+
+    PromptResponse:
+      type: object
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/PromptMessage"

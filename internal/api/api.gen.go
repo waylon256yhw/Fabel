@@ -41,44 +41,50 @@ func (e MessageRole) Valid() bool {
 
 // BootstrapResponse defines model for BootstrapResponse.
 type BootstrapResponse struct {
-	Characters         *[]Character        `json:"characters,omitempty"`
-	Presets            *[]Preset           `json:"presets,omitempty"`
+	Characters         []Character         `json:"characters"`
+	Presets            []Preset            `json:"presets"`
 	SeededConversation *ConversationDetail `json:"seeded_conversation,omitempty"`
 }
 
 // Character defines model for Character.
 type Character struct {
-	Description *string `json:"description,omitempty"`
-	FirstMes    *string `json:"first_mes,omitempty"`
-	Id          int     `json:"id"`
-	MesExample  *string `json:"mes_example,omitempty"`
-	Name        string  `json:"name"`
-	Personality *string `json:"personality,omitempty"`
-	Scenario    *string `json:"scenario,omitempty"`
+	Description string `json:"description"`
+	FirstMes    string `json:"first_mes"`
+	Id          int    `json:"id"`
+	MesExample  string `json:"mes_example"`
+	Name        string `json:"name"`
+	Personality string `json:"personality"`
+	Scenario    string `json:"scenario"`
 }
 
 // ConversationDetail defines model for ConversationDetail.
 type ConversationDetail struct {
 	Character   Character `json:"character"`
-	CharacterId *int      `json:"character_id,omitempty"`
-	CreatedAt   *string   `json:"created_at,omitempty"`
+	CharacterId int       `json:"character_id"`
+	CreatedAt   string    `json:"created_at"`
 	Id          int       `json:"id"`
 	Messages    []Message `json:"messages"`
 	Preset      Preset    `json:"preset"`
-	PresetId    *int      `json:"preset_id,omitempty"`
+	PresetId    int       `json:"preset_id"`
+}
+
+// CreateConversationRequest defines model for CreateConversationRequest.
+type CreateConversationRequest struct {
+	CharacterId int `json:"character_id"`
+	PresetId    int `json:"preset_id"`
 }
 
 // GetConversationResponse defines model for GetConversationResponse.
 type GetConversationResponse struct {
-	Conversation *ConversationDetail `json:"conversation,omitempty"`
+	Conversation ConversationDetail `json:"conversation"`
 }
 
 // Message defines model for Message.
 type Message struct {
 	ActiveChildId  *int        `json:"active_child_id,omitempty"`
 	Content        string      `json:"content"`
-	ConversationId *int        `json:"conversation_id,omitempty"`
-	CreatedAt      *string     `json:"created_at,omitempty"`
+	ConversationId int         `json:"conversation_id"`
+	CreatedAt      string      `json:"created_at"`
 	Id             int         `json:"id"`
 	ParentId       *int        `json:"parent_id,omitempty"`
 	Role           MessageRole `json:"role"`
@@ -89,22 +95,42 @@ type MessageRole string
 
 // Preset defines model for Preset.
 type Preset struct {
-	Id           int      `json:"id"`
-	MaxTokens    *int     `json:"max_tokens,omitempty"`
-	Model        string   `json:"model"`
-	Name         string   `json:"name"`
-	SystemPrompt *string  `json:"system_prompt,omitempty"`
-	Temperature  *float64 `json:"temperature,omitempty"`
+	Id           int     `json:"id"`
+	MaxTokens    int     `json:"max_tokens"`
+	Model        string  `json:"model"`
+	Name         string  `json:"name"`
+	SystemPrompt string  `json:"system_prompt"`
+	Temperature  float64 `json:"temperature"`
 }
+
+// PromptMessage defines model for PromptMessage.
+type PromptMessage struct {
+	Content string `json:"content"`
+	Role    string `json:"role"`
+}
+
+// PromptResponse defines model for PromptResponse.
+type PromptResponse struct {
+	Messages []PromptMessage `json:"messages"`
+}
+
+// CreateConversationJSONRequestBody defines body for CreateConversation for application/json ContentType.
+type CreateConversationJSONRequestBody = CreateConversationRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Initial data load
 	// (GET /api/bootstrap)
 	GetBootstrap(w http.ResponseWriter, r *http.Request)
+	// Create a new conversation
+	// (POST /api/conversations)
+	CreateConversation(w http.ResponseWriter, r *http.Request)
 	// Get conversation with details
 	// (GET /api/conversations/{id})
 	GetConversation(w http.ResponseWriter, r *http.Request, id int)
+	// Get constructed prompt for a conversation
+	// (GET /api/conversations/{id}/prompt)
+	GetConversationPrompt(w http.ResponseWriter, r *http.Request, id int)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -117,9 +143,21 @@ func (_ Unimplemented) GetBootstrap(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Create a new conversation
+// (POST /api/conversations)
+func (_ Unimplemented) CreateConversation(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Get conversation with details
 // (GET /api/conversations/{id})
 func (_ Unimplemented) GetConversation(w http.ResponseWriter, r *http.Request, id int) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Get constructed prompt for a conversation
+// (GET /api/conversations/{id}/prompt)
+func (_ Unimplemented) GetConversationPrompt(w http.ResponseWriter, r *http.Request, id int) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -146,6 +184,20 @@ func (siw *ServerInterfaceWrapper) GetBootstrap(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
+// CreateConversation operation middleware
+func (siw *ServerInterfaceWrapper) CreateConversation(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateConversation(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetConversation operation middleware
 func (siw *ServerInterfaceWrapper) GetConversation(w http.ResponseWriter, r *http.Request) {
 
@@ -162,6 +214,31 @@ func (siw *ServerInterfaceWrapper) GetConversation(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetConversation(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetConversationPrompt operation middleware
+func (siw *ServerInterfaceWrapper) GetConversationPrompt(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetConversationPrompt(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -288,7 +365,13 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/api/bootstrap", wrapper.GetBootstrap)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/api/conversations", wrapper.CreateConversation)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/api/conversations/{id}", wrapper.GetConversation)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/api/conversations/{id}/prompt", wrapper.GetConversationPrompt)
 	})
 
 	return r
@@ -297,18 +380,22 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/7RWSW/bPBD9KwK/72jYbpOTbl3QIIcCQa9BIIzFsc1UXMoZpTEM//eCpDZXUuIAzU0S",
-	"Odt7b2Z0FKXVzho0TCI/Cir3qCE+fraWiT24H0jOGsLw0Xnr0LPCeKXcg4eS0cc3xajjw/8etyIX/616",
-	"36vG8epLayJOC8EHhyIX4D0cwrvzSMiXO7uL96c8EaJEWZTWPKEnYGXNq5kN7n5FBlWJU+/Zbh6xjKH6",
-	"CkZ4SKTSK9dGa0yJvTK7YLpVnrjQ6fLoVMnBZ2UYdwkljVTgM2hX4aSdAT194NCTNVApPkyeU4kGvLIT",
-	"h6eF8PirVh6lyO9Dak2chylExsjNS+VNAumsijlwSo/AKAvgt2JKsMPLpfY9Gcyr9nKtpvszFU0B32PX",
-	"BRtUMMXIDfKQlBc6+B0apIVqFAxKVk9YlHtVyaZ8U1cVbIKw2de4mCLYGkYzze4w+3+tEAceDV+cprep",
-	"O9HUOhBXU6QLiBQxmMAYHYhRD/h6qdmiv776KZLvOt2dwzyreXgu2P5EQzPnVmL1tgmTSiqct9pNw8uo",
-	"HXrg2kcPW+t1IEJIW29ihY2FqfVmTv8xfJvfGIlgo8w2jTHFgQfxDTZYZZ/ubsVCBIlEeYv1cr38ELKy",
-	"Dg04JXJxtVwvr0JfAe8jLitwarVpd1/4sksg21iHsuZWijx0WLcgA11Nh0UXH9frprda5YJzlSqj9eqR",
-	"Uqultnqt6cZbONZ7tmn6lUSLrNmhiwyMzGy8AVWW9mF21u7BD9Vagz+IXNwaxQqqTAJDVlmQ8TyiMbSi",
-	"1VHJ00uwDMdEBNaDxvSPcH8UKuQbwG55zRu9d6SnDuvRGU3Ih3eEe25wToE+uJf9VrzPujndspBI6Cb1",
-	"aSGu19ejH4VzT8ZytrW1kX/xc4N8Rl8KKeMcppDf6U8AAAD//4Ltv07MCQAA",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
