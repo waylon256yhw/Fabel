@@ -6,12 +6,10 @@
 
   let scrollEl: HTMLElement | undefined = $state()
 
-  // Track message count and streaming content to trigger auto-scroll
   const _msgLen = $derived(chat.state.conversation?.messages.length ?? 0)
   const _streaming = $derived(chat.state.streamingContent)
 
   $effect(() => {
-    // Read derived values to register dependencies
     void _msgLen
     void _streaming
     tick().then(() => {
@@ -35,10 +33,14 @@
   }
 
   function onKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
       e.preventDefault()
       chat.send()
     }
+  }
+
+  function insertText(before: string, after: string) {
+    chat.state.draft += before + after
   }
 </script>
 
@@ -52,7 +54,10 @@
     <div class="prose-fabel mx-auto flex max-w-[800px] flex-col gap-12 px-12 py-16">
       {#each chat.state.conversation.messages as msg (msg.id)}
         <div class="flex flex-col gap-2">
-          <div class="text-xs font-semibold uppercase tracking-wider {msg.role === 'user' ? 'text-primary' : 'text-muted-foreground'}">
+          <div
+            class="text-[0.85rem] font-semibold tracking-[0.05em]
+              {msg.role === 'user' ? 'text-primary' : 'text-muted-foreground'}"
+          >
             {msg.role === 'user' ? 'You' : chat.state.conversation.character.name}
           </div>
           <div>{@html renderContent(msg.content)}</div>
@@ -61,7 +66,7 @@
 
       {#if chat.state.streaming && chat.state.streamingContent}
         <div class="flex flex-col gap-2">
-          <div class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <div class="text-[0.85rem] font-semibold tracking-[0.05em] text-muted-foreground">
             {chat.state.conversation.character.name}
           </div>
           <div>{@html renderContent(chat.state.streamingContent)}<span class="inline-block animate-pulse text-primary">|</span></div>
@@ -78,38 +83,48 @@
 </div>
 
 <!-- Input area -->
-<div class="shrink-0 border-t border-border px-6 py-3">
-  <div class="mx-auto flex max-w-[800px] items-end gap-2">
-    <!-- Prompt inspector -->
-    <button
-      class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-      title="Inspect prompt"
-      onclick={chat.loadPrompt}
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-    </button>
+<div class="shrink-0 border-t border-border px-6 py-1.5 pb-2">
+  <div class="mx-auto max-w-[800px]">
+    <!-- Plugin assistant bar -->
+    <div class="flex gap-0.5 pl-10 pb-0.5">
+      <button class="rounded px-1.5 py-0.5 font-story text-[0.8rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" onclick={() => insertText('「', '」')} title="Quote">「 」</button>
+      <button class="rounded px-1.5 py-0.5 font-story text-[0.8rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" onclick={() => insertText('『', '』')} title="Double Quote">『 』</button>
+      <button class="rounded px-1.5 py-0.5 font-story text-[0.8rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" onclick={() => insertText('*', '*')} title="Action">* *</button>
+      <button class="rounded px-1.5 py-0.5 font-story text-[0.8rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" onclick={() => insertText('(', ')')} title="OOC">(  )</button>
+    </div>
 
-    <textarea
-      bind:value={chat.state.draft}
-      onkeydown={onKeydown}
-      placeholder="Continue the story..."
-      rows="2"
-      disabled={chat.state.streaming || !chat.state.conversation}
-      class="flex-1 resize-none rounded-md border-none bg-transparent px-2 py-1.5 font-story text-base text-foreground placeholder:text-muted-foreground/50 focus:outline-none disabled:opacity-40"
-    ></textarea>
+    <!-- Input row -->
+    <div class="flex items-end gap-1.5">
+      <button
+        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        title="Inspect prompt"
+        onclick={chat.loadPrompt}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
 
-    <button
-      class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-30"
-      onclick={chat.send}
-      disabled={chat.state.streaming || !chat.state.draft.trim() || !chat.state.conversation}
-      title="Send"
-    >
-      {#if chat.state.streaming}
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
-      {:else}
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
-      {/if}
-    </button>
+      <textarea
+        bind:value={chat.state.draft}
+        onkeydown={onKeydown}
+        placeholder="Continue the story..."
+        rows="1"
+        disabled={chat.state.streaming || !chat.state.conversation}
+        class="flex-1 resize-none bg-transparent px-2 py-1 font-story text-base leading-relaxed text-foreground placeholder:font-sans placeholder:text-[0.95rem] placeholder:text-muted-foreground/50 focus:outline-none disabled:opacity-40"
+      ></textarea>
+
+      <button
+        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-primary/30 bg-primary/15 text-primary transition-all hover:-translate-y-0.5 hover:bg-primary hover:text-primary-foreground hover:shadow-[0_4px_12px_rgba(196,164,106,0.2)] disabled:opacity-30 disabled:hover:translate-y-0"
+        onclick={chat.send}
+        disabled={chat.state.streaming || !chat.state.draft.trim() || !chat.state.conversation}
+        title="Send"
+      >
+        {#if chat.state.streaming}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
+        {:else}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
+        {/if}
+      </button>
+    </div>
   </div>
 </div>
 
